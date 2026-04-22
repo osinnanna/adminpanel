@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "https://babyshop.aptech.osii.me/api/$1"
+    }
+  ]
+}
