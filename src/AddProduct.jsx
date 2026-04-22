@@ -41,10 +41,15 @@ export default function AddProduct({ token, onProductAdded }) {
     };
 
     // 2. Initialize FormData
+    // 2. Initialize FormData
     const submissionData = new FormData();
 
-    // Append the JSON as a string under the 'product' key
-    submissionData.append("product", JSON.stringify(productPayload));
+    // Create a Blob to force the Content-Type of this specific part to be application/json
+    const jsonBlob = new Blob([JSON.stringify(productPayload)], {
+      type: "application/json",
+    });
+
+    submissionData.append("product", jsonBlob);
 
     // Append the file ONLY if the user selected one (since it's unrequired)
     if (imageFile) {

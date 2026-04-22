@@ -4,8 +4,11 @@ import AddProduct from "./AddProduct";
 export default function Dashboard({ token, onLogout }) {
   const [products, setProducts] = useState([]);
   const [editingId, setEditingId] = useState(null);
+
+  // State includes 'category' to prevent 400 Bad Request from Spring Boot @Valid
   const [editFormData, setEditFormData] = useState({
     name: "",
+    category: "",
     brand: "",
     price: 0,
     stockQuantity: 0,
@@ -27,7 +30,7 @@ export default function Dashboard({ token, onLogout }) {
     fetchInventory();
   }, []);
 
-  // --- BUG FIX: Safely extract the ID regardless of what Spring Boot calls it ---
+  // Safely extract the ID regardless of what Spring Boot calls it
   const getId = (product) => product.id || product.productId;
 
   // --- EDITING LOGIC ---
@@ -36,6 +39,7 @@ export default function Dashboard({ token, onLogout }) {
     setEditingId(currentId);
     setEditFormData({
       name: product.name,
+      category: product.category || "", // Fallback to empty string if undefined
       brand: product.brand,
       price: product.price,
       stockQuantity: product.stockQuantity,
@@ -55,6 +59,7 @@ export default function Dashboard({ token, onLogout }) {
     setEditingId(null);
   };
 
+  // --- REAL BACKEND SAVE LOGIC ---
   const handleSaveClick = async (product) => {
     const currentId = getId(product);
     try {
@@ -68,16 +73,14 @@ export default function Dashboard({ token, onLogout }) {
       });
 
       if (response.ok) {
+        // Update the React state only AFTER the database confirms the save
         const updatedProducts = products.map((p) =>
           getId(p) === currentId ? { ...p, ...editFormData } : p,
         );
         setProducts(updatedProducts);
         setEditingId(null);
       } else {
-        // Detailed error to help you debug the backend
-        alert(
-          `Failed to save! Server returned ${response.status}. Ensure a PUT endpoint for /api/products/{id} exists in your Spring Boot Controller.`,
-        );
+        alert(`Failed to save! Server returned ${response.status}.`);
       }
     } catch (err) {
       console.error("Network error while updating:", err);
@@ -85,13 +88,12 @@ export default function Dashboard({ token, onLogout }) {
     }
   };
 
-  // --- DELETE LOGIC ---
+  // --- REAL BACKEND DELETE LOGIC ---
   const handleDeleteClick = async (product) => {
     const currentId = getId(product);
 
-    // Prevent accidental clicks
     const confirmDelete = window.confirm(
-      `Are you sure you want to delete "${product.name}"?`,
+      `Are you sure you want to permanently delete "${product.name}" from the database?`,
     );
     if (!confirmDelete) return;
 
@@ -104,12 +106,10 @@ export default function Dashboard({ token, onLogout }) {
       });
 
       if (response.ok) {
-        // Remove the item from the UI immediately without needing to reload the page
+        // Remove from React state only AFTER the database confirms the deletion
         setProducts(products.filter((p) => getId(p) !== currentId));
       } else {
-        alert(
-          `Failed to delete! Server returned ${response.status}. Ensure a DELETE endpoint for /api/products/{id} exists in your Spring Boot Controller.`,
-        );
+        alert(`Failed to delete! Server returned ${response.status}.`);
       }
     } catch (err) {
       console.error("Network error while deleting:", err);
@@ -131,6 +131,7 @@ export default function Dashboard({ token, onLogout }) {
           <tr>
             <th>ID</th>
             <th>Name</th>
+            <th>Category</th>
             <th>Brand</th>
             <th>Price ($)</th>
             <th>Stock</th>
@@ -153,6 +154,15 @@ export default function Dashboard({ token, onLogout }) {
                         type="text"
                         name="name"
                         value={editFormData.name}
+                        onChange={handleEditFormChange}
+                      />
+                    </td>
+                    <td>
+                      <input
+                        className="edit-input"
+                        type="text"
+                        name="category"
+                        value={editFormData.category}
                         onChange={handleEditFormChange}
                       />
                     </td>
@@ -197,6 +207,7 @@ export default function Dashboard({ token, onLogout }) {
                   // --- VIEW MODE UI ---
                   <>
                     <td>{product.name}</td>
+                    <td>{product.category}</td>
                     <td>{product.brand}</td>
                     <td>{product.price.toFixed(2)}</td>
                     <td>{product.stockQuantity}</td>
